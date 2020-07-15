@@ -173,3 +173,15 @@ gt
 rmt
 rnt
 rbt
+cht
+rsch
+rs
+lsch
+ls
+lk
+lch
+ß
+rk
+rg
+rb
+rb
