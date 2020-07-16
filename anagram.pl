@@ -52,38 +52,51 @@ print "Clusters that need a vowel as successor :\n@not_coda\n";
 #print "Single consonants :\n@single_consonants\n";
 close(DATA) or die "Could not close file properly!";
 
-my @letters = split(//, $word);
-my %letter_count;
-for(@letters){
-    if (exists $letter_count{$_}) {
-	$letter_count{$_} += 1;
+
+sub letter_count {
+    #my $cl = $_;
+    my @letters = split(//, $word);
+    my %letter_count;
+    for(@letters){
+        if (exists $letter_count{$_}) {
+       	    $letter_count{$_} += 1;
+        }
+        else {
+	    $letter_count{$_} = 1;
+        }
     }
-    else {
-	$letter_count{$_} = 1;
-    }
+    return %letter_count;
 }
 
-#print "$_ : $letter_count{$_} \n" for keys(%letter_count);
 
 sub cluster_count{
-    my (@clusters, %letter_count) = @_;
+    my (@cluster_array, %letter_dict) = @_;
     my %item_count;
-    for(@clusters){
-	my @item_letters = split(//, $_);
-	print "item_letters = @item_letters";
-	my %item_letter_count;
-        for(@item_letters){
-            if (exists $item_letter_count{$_}) {
-	        $item_letter_count{$_} += 1;
-            }
-            else {
-	        $item_letter_count{$_} = 1;
-            }
-        }
-        $item_count{$_} = min(values %item_letter_count);
-        print "$_ : $item_count{$_}\n";
+    foreach my $cluster (@cluster_array){
+        local $word = \$cluster;
+	    my %item_letter_count = letter_count;
+	    my $min = 100;
+	    foreach my $letter (keys %item_letter_count){
+	        if ($letter_dict{$letter} == 0) {
+		        $min = 0;
+	            last;
+	        }else {
+	        	if ($letter_dict{$letter} < $min) {
+		        $min = $letter_dict{$letter};
+		        }
+	        }
+	    }
+	if ($min == 0) {
+	    next;
+	} else {
+            $item_count{$cluster} = $min;
+	}
+        print "$cluster : $item_count{$cluster}\n";
     }
+    return %item_count;
 }
 
-cluster_count(@vowels, %letter_count);
 
+my %count = letter_count;
+print "$_ : $count{$_} \n" for keys(%count);
+cluster_count(@vowels, %count);
