@@ -113,6 +113,7 @@ v
 ww
 w
 x
+xt
 y
 zz
 z
@@ -129,7 +130,6 @@ ckst
 gst
 tzt
 schst
-chst
 kst
 mmst
 mst
@@ -187,3 +187,14 @@ rb
 rzt
 mpf
 mpft
+ns
+lz
+chzt
+rzl
+lg
+rch
+lscht
+chtl
+ngt
+nz
+nzt
