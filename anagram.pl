@@ -44,17 +44,19 @@ while(<DATA>) {
     #}  
 }
 
+close(DATA) or die "Could not close file properly!";
+
 #print "Vowels:\n@vowels\n";
 #print "Double consonants and other noninital consonant clusters:\n@not_onset\n";
 #print "Clusters at the start, the end, or the middle of a word, sometimes belong to two successive syllables :\n@onset_coda_ambisyllabic\n";
 #print "Clusters that need a vowel as successor :\n@not_coda\n";
 ##print "noninitial clusters ending with z or k :\n@cluster_notinitial\n";
 ##print "Single consonants :\n@single_consonants\n";
-#close(DATA) or die "Could not close file properly!";
 
 
 sub letter_count {
     #my $cl = $_;
+    #print "word in letter_count: $word\n";
     my @letters = split(//, $word);
     my %letter_count;
     for(@letters){
@@ -70,35 +72,61 @@ sub letter_count {
 
 
 sub cluster_count{
-    my (@cluster_array, %letter_dict) = @_;
+    my ($clusters_ref, $count_ref) = @_;
+    my @clusters = @{$clusters_ref};
+    my %count = %{$count_ref};
+    my $length = scalar(@_);
+    #print "length of input array = $length\n";
+    #print "input array = @_\n";
+    print "clusters : @clusters\n";
+    #print "count in cluster_count:\n";
+    #print " $_ : $count{$_} \n" for keys(%count);
     my %item_count;
     my $min = 0;
-    for(my $i=0; $i < scalar(@cluster_array); $i++){
-        my $word = $cluster_array[$i];
+    for(my $i=0; $i < scalar(@clusters); $i++){
+        $word = $clusters[$i];
+        #print "word = $word\n";
 	    my %item_letter_count = letter_count();
-        print "$_ : $item_letter_count{$_} \n" for keys(%item_letter_count);
+        #print "$_ : $item_letter_count{$_} \n" for keys(%item_letter_count);
 	    my $min = 100;
 	    foreach my $letter (keys %item_letter_count){
-	        if ($letter_dict{$letter} == 0) {
+            #print "letter: $letter\n";
+	        if (not exists($count{$letter})) {
 		        $min = 0;
 	            last;
 	        }else {
-	        	if ( int($letter_dict{$letter}/item_letter_count{$letter}) < $min) {
-		        $min = int($letter_dict{$letter}/item_letter_count{$letter});
+	        	if ( int($count{$letter}/$item_letter_count{$letter}) < $min) {
+		        $min = int($count{$letter}/$item_letter_count{$letter});
 		        }
             }
         }
 	    if ($min == 0) {
 	        next;
 	    } else {
-            $item_count{$cluster_array[$i]} = $min;
-            print "$cluster_array[$i] : $item_count{$cluster_array[$i]}\n";
+            $item_count{$clusters[$i]} = $min;
+            #print "$clusters[$i] : $item_count{$clusters[$i]}\n";
         }
     }
     return %item_count;
 }
 
 
-my %count = letter_count();#($word);
-print "$_ : $count{$_} \n" for keys(%count);
-cluster_count(@vowels, %count);
+my %l_count = letter_count();#($word);
+print "l_count outside of subroutine: \n";
+print "$_ : $l_count{$_} \n" for keys(%l_count);
+
+my %vowel_count = cluster_count(\@vowels, \%l_count);
+print "Vowels and vowel clusters in input word :\n";
+print "$_ : $vowel_count{$_} \n" for keys(%vowel_count);
+
+my %not_coda_count = cluster_count(\@not_coda, \%l_count);
+print "Not coda clusters in input word :\n";
+print "$_ : $not_coda_count{$_} \n" for keys(%not_coda_count);
+
+my %not_onset_count = cluster_count(\@not_onset, \%l_count);
+print "Not onset clusters in input word :\n";
+print "$_ : $not_onset_count{$_} \n" for keys(%not_onset_count);
+
+my %onset_coda_ambisyllabic_count = cluster_count(\@onset_coda_ambisyllabic, \%l_count);
+print "Onset coda and ambisyllabic clusters in input word :\n";
+print "$_ : $onset_coda_ambisyllabic_count{$_} \n" for keys(%onset_coda_ambisyllabic_count);
