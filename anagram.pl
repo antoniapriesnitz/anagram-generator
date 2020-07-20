@@ -39,9 +39,6 @@ while(<DATA>) {
     else {#(/.+(l|t|f)\z/) {
 	push(@onset_coda_ambisyllabic, $_);
     }  
-    #else {
-    #	push(@single_consonants, $_);
-    #}  
 }
 
 close(DATA) or die "Could not close file properly!";
@@ -51,9 +48,9 @@ close(DATA) or die "Could not close file properly!";
 #print "Clusters at the start, the end, or the middle of a word, sometimes belong to two successive syllables :\n@onset_coda_ambisyllabic\n";
 #print "Clusters that need a vowel as successor :\n@not_coda\n";
 ##print "noninitial clusters ending with z or k :\n@cluster_notinitial\n";
-##print "Single consonants :\n@single_consonants\n";
 
-
+# Counts the occurences of all letters of a word
+# Returns a hash of the form letter: occurences
 sub letter_count {
     #my $cl = $_;
     #print "word in letter_count: $word\n";
@@ -70,12 +67,14 @@ sub letter_count {
     return %letter_count;
 }
 
-
+# Takes references of a list of letter clusters and a hash of letter occurences as parameters
+# Counts how many instances of each cluster can be generated with the given number of letters
+# Returns a hash containing the cluster: instances pairs
 sub cluster_count{
     my ($clusters_ref, $count_ref) = @_;
     my @clusters = @{$clusters_ref};
     my %count = %{$count_ref};
-    my $length = scalar(@_);
+    #my $length = scalar(@_);
     #print "length of input array = $length\n";
     #print "input array = @_\n";
     #print "clusters : @clusters\n";
@@ -110,6 +109,8 @@ sub cluster_count{
     return %item_count;
 }
 
+# Takes a word and counts the occurences of vowels, consonants and the letter y
+# Returns the maximum number of syllables the anagram may have
 sub calc_syllables {
     #print "\$_ = $_\n";
     my @letters = split(//, $word);
@@ -137,6 +138,25 @@ sub calc_syllables {
     return $syllable;
 }
 
+# Takes a cluster of letters and hash of letter: occurences pairs as parameters
+# Subtracts 1 from each letter that is used by the cluster
+# Returns the changed hash
+sub countdown_letters {
+    my ($cluster, $occurrences_ref) = @_;
+    #my $cluster = ${$cluster_ref};
+    my %occurences = %{$occurrences_ref};
+    my @letters = split(//, $cluster);
+    for(@letters) {
+        if ($occurences{$_} == 0) {
+            %occurences = ();
+            last;
+        } else {
+            $occurences{$_} -= 1;
+        }
+    }
+    return %occurences;
+}
+
 
 my %l_count = letter_count();#($word);
 print "l_count outside of subroutine: \n";
@@ -145,7 +165,7 @@ print "$_ : $l_count{$_} \n" for keys(%l_count);
 my %syllable_count = ();
 my $syllables = calc_syllables(\%l_count);
 print "*************************************************\n";
-print "Maximal number of syllables = $syllables\n";
+print "Maximum number of syllables = $syllables\n";
 $syllable_count{"|"} = $syllables;
 print "$_ : $syllable_count{$_}\n" for keys(%syllable_count);
 
@@ -169,3 +189,13 @@ print "*************************************************\n";
 print "Onset coda and ambisyllabic clusters in input word :\n";
 print "$_ : $onset_coda_ambisyllabic_count{$_} \n" for keys(%onset_coda_ambisyllabic_count);
 
+my @dicts = [\%syllable_count, \%vowel_count, \%not_coda_count, \%onset_coda_ambisyllabic_count, \%not_onset_count];
+print "\@dicts = syllables, vowels, not_coda, onset_coda_ambisyllabic, not_onset\n";
+my %successors = (0 => [1,2,3], 1 => [0,2,3,4], 2 => [1], 3 => [0,1], 4 => [0,1]);
+print "successors:\n";
+print "$_ : @{$successors{$_}}\n" for keys(%successors);
+
+
+my $test = "nnn";
+my %test_count = countdown_letters($test, \%l_count);
+print "$_ : $test_count{$_}\n" for keys(%test_count);
