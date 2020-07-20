@@ -78,7 +78,7 @@ sub cluster_count{
     my $length = scalar(@_);
     #print "length of input array = $length\n";
     #print "input array = @_\n";
-    print "clusters : @clusters\n";
+    #print "clusters : @clusters\n";
     #print "count in cluster_count:\n";
     #print " $_ : $count{$_} \n" for keys(%count);
     my %item_count;
@@ -110,23 +110,62 @@ sub cluster_count{
     return %item_count;
 }
 
+sub calc_syllables {
+    #print "\$_ = $_\n";
+    my @letters = split(//, $word);
+    print "word in calc_syllables: $word\n";
+    my $single_vowels = 0;
+    my $single_consonants = 0;
+    my $y_count = 0;
+    for(@letters) {
+        if (/a|e|i|o|u|ä|ö|ü/) {
+            $single_vowels += 1;
+        } elsif (/y/) {
+            $y_count += 1;
+        } else {
+            $single_consonants += 1;
+        }
+    }
+    print "number of single vowels = $single_vowels\n";
+    print "number of single_consonants = $single_consonants\n";
+    print "number of letter y = $y_count\n";
+    #    if ($single_vowels <= $single_consonants) {
+    #$syllables = $single_vowels + $y_count;
+    #}
+    #else {
+    my $syllable = $single_vowels + $y_count;
+    return $syllable;
+}
+
 
 my %l_count = letter_count();#($word);
 print "l_count outside of subroutine: \n";
 print "$_ : $l_count{$_} \n" for keys(%l_count);
 
+my %syllable_count = ();
+my $syllables = calc_syllables(\%l_count);
+print "*************************************************\n";
+print "Maximal number of syllables = $syllables\n";
+$syllable_count{"|"} = $syllables;
+print "$_ : $syllable_count{$_}\n" for keys(%syllable_count);
+
 my %vowel_count = cluster_count(\@vowels, \%l_count);
+print "*************************************************\n";
 print "Vowels and vowel clusters in input word :\n";
 print "$_ : $vowel_count{$_} \n" for keys(%vowel_count);
 
 my %not_coda_count = cluster_count(\@not_coda, \%l_count);
+print "*************************************************\n";
 print "Not coda clusters in input word :\n";
 print "$_ : $not_coda_count{$_} \n" for keys(%not_coda_count);
 
 my %not_onset_count = cluster_count(\@not_onset, \%l_count);
+print "*************************************************\n";
 print "Not onset clusters in input word :\n";
 print "$_ : $not_onset_count{$_} \n" for keys(%not_onset_count);
 
 my %onset_coda_ambisyllabic_count = cluster_count(\@onset_coda_ambisyllabic, \%l_count);
+print "*************************************************\n";
 print "Onset coda and ambisyllabic clusters in input word :\n";
 print "$_ : $onset_coda_ambisyllabic_count{$_} \n" for keys(%onset_coda_ambisyllabic_count);
+
