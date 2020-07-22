@@ -139,6 +139,9 @@ sub calc_syllables {
     #}
     #else {
     my $syllable = $single_vowels + $y_count;
+    if ($syllable > 0) {
+        $syllable += 1; # first and last element in generated anagram will be syllable start marker "|"
+    }
     return $syllable;
 }
 
@@ -146,19 +149,32 @@ sub calc_syllables {
 # Subtracts 1 from each letter that is used by the cluster
 # Returns the changed hash
 sub countdown_letters {
-    my ($cluster, $letter_instances_ref) = @_;
-    #my $cluster = ${$cluster_ref};
-    my %letter_instances = %{$letter_instances_ref};
+    #my ($cluster, $l_instances_ref, $c_instances_ref) = @_;
+    my ($cluster, $l_instances_ref) = @_;
+    my %l_instances = %{$l_instances_ref};
+    #my %c_instances = %{$c_instances_ref};
+    my %l_instances_modified = %l_instances;
+    #my %c_instances_modified = %c_instances;
     my @letters = split(//, $cluster);
+    my $bool = 1;
     for(@letters) {
-        if ($letter_instances{$_} == 0) {
-            %letter_instances = ();
+        if (not exists $l_instances{$_} or $l_instances{$_} == 0) {
+            #$c_instances_modified{$cluster} = 0;
+            $bool = 0;
             last;
         } else {
-            $letter_instances{$_} -= 1;
+            $l_instances_modified{$_} -= 1;
         }
     }
-    return %letter_instances;
+    #if (%c_instances_modified{$cluster} == 0) {
+    if (not $bool) {
+        #return (\%c_instances_modified, \%l_instances);
+        return ($bool, \%l_instances);
+    } else {
+        #$c_instances{$cluster} -= 1;
+        #return (\%c_instances, \%l_instances_modified);
+        return ($bool, \%l_instances_modified);
+    }
 }
 
 
@@ -173,6 +189,11 @@ print "*************************************************\n";
 print "Maximum number of syllables = $syllables\n";
 $syllable_count{"|"} = $syllables;
 print "$_: $syllable_count{$_}\t" for keys(%syllable_count);
+print "\n";
+
+$occurrences{"|"} = $syllables;
+print "occurrences: ";
+print "$_: $occurrences{$_} \t" for keys(%occurrences);
 print "\n";
 
 my %vowel_count = cluster_count(\@vowels, \%occurrences);
@@ -212,37 +233,38 @@ my @adjacency_matrix = qw/0 1 1 1 0 1 0 1 1 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/;
 my $len = scalar(@adjacency_matrix);
 #print "Length of adjacency_matrix = $len\n";
 
-#my $test = "nnn";
-#my %test_count = countdown_letters($test, \%occurrences);
-#print "$_ : $test_count{$_}\n" for keys(%test_count);
-
 my @anagrams = ();
 
 sub concatenate {
     my ($word_length, $anagram_length, $vertex, $anagram_ref, $letter_count_ref) = @_;
     my @anagram = @{$anagram_ref};
     my %letter_count = %{$letter_count_ref};
-    if ($anagram_length == $word_length) {
+    print "anagram length = $anagram_length\n";
+    if ($anagram_length >= $word_length) {
         my $anagram = join('-', @anagram);
         push(@anagrams, $anagram);
         print "$anagram\n";
         return;
     }
-    my $row = $vertex * 5;
-    print "row = $row\n";
+    my $row_start = $vertex * 5;
+    print "row_start = $row_start\n";
     for(my $i=0; $i<5; $i++) {
-        print "i = $i\n";
-        if ($adjacency_matrix[$row + $i] == 1) {
+        if ($adjacency_matrix[$row_start + $i] == 1) {
+            print "i = $i\n";
             my %vertex = %{$vertices[$i]};
             if (%vertex) {
                 foreach my $key (keys %vertex) {
-                    my %downcount = countdown_letters($key, \%letter_count);
-                    if (%downcount) {
+                    my ($bool, $downcount_ref) = countdown_letters($key, \%letter_count);
+                    my %downcount = %{$downcount_ref};
+                    if ($bool) {
+                        print "key = $key\n";
                         push(@anagram, $key);
-                        if ($key != '|') {
+                        #if ($key != '|') {
+                        #if ($key =~ /[^\|]/)  {
+                        if ($key =~ /[a-z]|ä|ö|ü/)  {
                             $anagram_length += length($key);
                         }
-                        concatenate($word_length, $anagram_length, $i, \@anagram, \%letter_count);
+                        concatenate($word_length, $anagram_length, $i, \@anagram, \%downcount);
                     } else {
                         print "Not enough letters for cluster $key!\n";
                     }
