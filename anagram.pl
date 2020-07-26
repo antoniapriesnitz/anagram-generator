@@ -171,13 +171,15 @@ if ($info) {
     print "**************************************************************\n\n";
 }
 
+for(@onset_coda_ambisyllabic) {
+    push(@not_onset, $_);
+    push(@not_coda, $_);
+}
 #my %adjacency_lists = (0 => [1,2,3], 1 => [0,2,3,4], 2 => [1], 3 => [0,1], 4 => [0,1]);
-#print "adjacency lists:\n";
-#print "$_: @{$adjacency_lists{$_}}\t" for keys(%adjacency_lists);
-#print "\n";
 
 my @vertices = (\@syllable_markers, \@vowels, \@not_coda, \@onset_coda_ambisyllabic, \@not_onset);
-my @adjacency_matrix = qw/0 1 1 1 0 1 0 1 1 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
+#my @adjacency_matrix = qw/0 1 1 1 0 1 0 1 1 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
+my @adjacency_matrix = qw/0 1 1 0 0 1 0 1 0 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
 my @anagrams = ();
 
 sub concatenate {
@@ -195,19 +197,25 @@ sub concatenate {
             my @next_vertex = @{$vertices[$i]};
             for(@next_vertex) {
                 if (($vertex == 0) and (scalar(@anagram) >= 2)) { # last item in anagram is syllable gap
-                    if (($anagram[-2] =~ /[a|e|i|o|u|ä|ö|ü]/) and ($i == 1)) {# 2nd last item and current are vowels
-                        next;
-                    } elsif (($anagram[-2] =~ /^([^aeiouäöü])/) and ($i != 1)) {# 2nd last and current are consonants
-                        if (scalar(@anagram) == 2) { # syllable gap before first vowel
-                            #print "syllable gap before first vowel\n";
-                            #print "@anagram\t\t$_\n";
+                    if (($anagram[-2] =~ /^([^aeiouäöü])/) and ($i != 1)) {# 2nd last and current are consonants
+                        if ((scalar(@anagram) == 2) or $anagram_length == $word_length-1) { 
+                        # syllable gap before first vowel or between consonants after last vowel
+                        print "@anagram\t$_\n";
                             next;
-                        } elsif (scalar(@anagram) >= 4) {
-                            if (($anagram[-4] =~ /^([^aeiouäöü])/) and $anagram[-3] =~ /\|/) { # syllable without vowel
-                                #print "no vowel between syllable gaps:\n";
-                                #print "@anagram\t\t$_\n";
+                        }
+                        elsif (scalar(@anagram) >= 4) {
+                            if (($anagram[-4] =~ /^([^aeiouäöü])/) and $anagram[-3] =~ /\|/) {
+                                print "@anagram\t\t$_\n"; # Syllables without vowels
                                 next;
                             }
+                        }
+                    }
+                    if (scalar(@anagram) >= 4) {
+                        if (($anagram[-2] =~ /[a|e|i|o|u|ä|ö|ü]/) and ($i == 1)) {# 2nd last item and current are vowels
+                            if (($anagram[-4] =~ /[a|e|i|o|u|ä|ö|ü]/)  and ($anagram[-3] =~ /\|/)) { #prevent circle of vowels
+                                #print "@anagram\t$_\n";
+                                next;
+                            }   
                         }
                     }
                 }   
@@ -238,7 +246,11 @@ concatenate($length, 0, 0, \@anagram, \%occurrences);
 
 my @readable_anagrams = ();
 for(@anagrams) {
-    $_ =~ tr/|.//d;
+    $_ =~ tr/.//d;
     push(@readable_anagrams, $_);
 }
-print "Anagrams:\n @readable_anagrams\n";
+my $number = scalar(@anagrams);
+print "$number anagrams:\n";
+for(@readable_anagrams) {
+    print "$_\n";
+}
