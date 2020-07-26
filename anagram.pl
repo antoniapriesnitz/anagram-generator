@@ -12,9 +12,9 @@ my $length = length($word);
 
 my %all = ();
 my @vowel_clusters = (); # single or clusters
-my @onset_coda_ambisyllabic_clusters = (); # bl, schl, st, pfl, pf 
-my @not_coda_clusters = (); # fr, spr, chr, schm, schn, str 
-my @not_onset_clusters = (); # rbst, scht, lm, lst, fst, rfst, rsch, sst, chst, ckst, gst, tzt, schst, chst, kst, mmst, mst, nnst, nst, pst, vn,  rscht, rm, ffst, ppst, bbst, rrst, rst, rn, lln, llst, ml, rschst, rft, cht 
+my @onset_coda_clusters = (); # bl, schl, st, pfl, pf 
+my @onset_clusters = (); # fr, spr, chr, schm, schn, str 
+my @coda_clusters = (); # rbst, scht, lm, lst, fst, rfst, rsch, sst, chst, ckst, gst, tzt, schst, chst, kst, mmst, mst, nnst, nst, pst, vn,  rscht, rm, ffst, ppst, bbst, rrst, rst, rn, lln, llst, ml, rschst, rft, cht 
 
 open(DATA, "<$file") or die "Couldn't open file!";
 
@@ -29,19 +29,17 @@ while(<DATA>) {
 	push(@vowel_clusters, $_);
     }
     elsif (/.+r\z/ or /sch(m|n)/) {
-	push(@not_coda_clusters, $_);
+	push(@onset_clusters, $_);
     }  
-    elsif (/([a-z])\1/ or /(ck|tz)/ or /.+(st|.t|m|l|n)\z/) {
-	push(@not_onset_clusters, $_);
+    elsif (/([a-z])\1/ or /(ck|tz|(rz|cht)l)/ or /ß/ or /.+(st|.*t|m|n|g|k|ch|sch|z|s|f|d|b)\z/) {
+	push(@coda_clusters, $_);
     }  
     else {#(/.+(l|t|f)\z/) {
-	push(@onset_coda_ambisyllabic_clusters, $_);
+	push(@onset_coda_clusters, $_);
     }  
 }
 
 close(DATA) or die "Could not close file properly!";
-
-
 
 # Counts the occurences of all letters of a word
 # Returns a hash of the form letter: occurences
@@ -147,15 +145,15 @@ $occurrences{"|"} = $syllables;
 my @syllable_markers = ();
 push(@syllable_markers, "|");
 my @vowels = cluster_count(\@vowel_clusters, \%occurrences);
-my @not_coda = cluster_count(\@not_coda_clusters, \%occurrences);
-my @onset_coda_ambisyllabic = cluster_count(\@onset_coda_ambisyllabic_clusters, \%occurrences);
-my @not_onset = cluster_count(\@not_onset_clusters, \%occurrences);
+my @onset = cluster_count(\@onset_clusters, \%occurrences);
+my @onset_coda = cluster_count(\@onset_coda_clusters, \%occurrences);
+my @coda = cluster_count(\@coda_clusters, \%occurrences);
 
 if ($info) {
     print "Vowels:\n@vowel_clusters\n";
-    print "Double consonants and other noninital consonant clusters:\n@not_onset_clusters\n";
-    print "Clusters at the start, the end, or the middle of a word, sometimes belong to two successive syllables:\n@onset_coda_ambisyllabic_clusters\n";
-    print "Clusters that need a vowel as successor:\n@not_coda_clusters\n";
+    print "Clusters that need a vowel as successor:\n@onset_clusters\n";
+    print "Double consonants and other noninital consonant clusters:\n@coda_clusters\n";
+    print "Clusters at the start or the end of a word:\n@onset_coda_clusters\n";
     print "**************************************************************\n";
     print "Input word: $word\n";
     print "length = $length\n";
@@ -165,21 +163,23 @@ if ($info) {
     print "\n";
     print "New syllable marker:\t@syllable_markers\n";
     print "Vowels and vowel clusters in input word:\t@vowels\n";
-    print "Not coda clusters in input word:\t@not_coda\n";
-    print "Onset coda and ambisyllabic clusters in input word:\t@onset_coda_ambisyllabic\n";
-    print "Not onset clusters in input word :\t@not_onset\n";
+    print "Onset clusters in input word:\t@onset\n";
+    print "Coda clusters in input word :\t@coda\n";
+    print "Onset and coda clusters in input word:\t@onset_coda\n";
     print "**************************************************************\n\n";
 }
 
-for(@onset_coda_ambisyllabic) {
-    push(@not_onset, $_);
-    push(@not_coda, $_);
+for(@onset_coda) {
+    push(@coda, $_);
+    push(@onset, $_);
 }
-#my %adjacency_lists = (0 => [1,2,3], 1 => [0,2,3,4], 2 => [1], 3 => [0,1], 4 => [0,1]);
+#my %adjacency_lists = (0 => [1,2], 1 => [0,3], 2 => [1], 3 => [0]) ;
 
-my @vertices = (\@syllable_markers, \@vowels, \@not_coda, \@onset_coda_ambisyllabic, \@not_onset);
+#my @vertices = (\@syllable_markers, \@vowels, \@onset, \@onset_coda, \@coda);
+my @vertices = (\@syllable_markers, \@vowels, \@onset, \@coda);
 #my @adjacency_matrix = qw/0 1 1 1 0 1 0 1 1 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
-my @adjacency_matrix = qw/0 1 1 0 0 1 0 1 0 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
+#my @adjacency_matrix = qw/0 1 1 0 0 1 0 1 0 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
+my @adjacency_matrix = qw/0 1 1 0 1 0 0 1 0 1 0 0 1 0 0 0 /; # 4 rows of size 4
 my @anagrams = ();
 
 sub concatenate {
@@ -192,7 +192,7 @@ sub concatenate {
     }
     my %letter_count = %{$letter_count_ref};
     my $row_start = $vertex * 5;
-    for(my $i=0; $i<5; $i++) {
+    for(my $i=0; $i<4; $i++) {
         if ($adjacency_matrix[$row_start + $i] == 1) {
             my @next_vertex = @{$vertices[$i]};
             for(@next_vertex) {
@@ -200,12 +200,12 @@ sub concatenate {
                     if (($anagram[-2] =~ /^([^aeiouäöü])/) and ($i != 1)) {# 2nd last and current are consonants
                         if ((scalar(@anagram) == 2) or $anagram_length == $word_length-1) { 
                         # syllable gap before first vowel or between consonants after last vowel
-                        print "@anagram\t$_\n";
+                            print "start = c|c or end = ...c|c\t @anagram\t$_\n";
                             next;
                         }
                         elsif (scalar(@anagram) >= 4) {
                             if (($anagram[-4] =~ /^([^aeiouäöü])/) and $anagram[-3] =~ /\|/) {
-                                print "@anagram\t\t$_\n"; # Syllables without vowels
+                                print "syllable without vowel:\t@anagram\t\t$_\n"; # Syllables without vowels
                                 next;
                             }
                         }
@@ -213,7 +213,7 @@ sub concatenate {
                     if (scalar(@anagram) >= 4) {
                         if (($anagram[-2] =~ /[a|e|i|o|u|ä|ö|ü]/) and ($i == 1)) {# 2nd last item and current are vowels
                             if (($anagram[-4] =~ /[a|e|i|o|u|ä|ö|ü]/)  and ($anagram[-3] =~ /\|/)) { #prevent circle of vowels
-                                #print "@anagram\t$_\n";
+                                print "v|v|v:\t@anagram\t$_\n";
                                 next;
                             }   
                         }
