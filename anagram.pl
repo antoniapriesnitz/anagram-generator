@@ -31,12 +31,15 @@ while(<DATA>) {
     elsif (/.+r\z/ or /sch(m|n)/) {
 	push(@onset_clusters, $_);
     }  
+    elsif (/^.\z/ or /^.l\z/ or /pf|schl|(c|p)h|s(p|c)|qu/) {
+	push(@onset_coda_clusters, $_);
+    }  
     elsif (/([a-z])\1/ or /(ck|tz|(rz|cht)l)/ or /ß/ or /.+(st|.*t|m|n|g|k|ch|sch|z|s|f|d|b)\z/) {
 	push(@coda_clusters, $_);
     }  
-    else {#(/.+(l|t|f)\z/) {
-	push(@onset_coda_clusters, $_);
-    }  
+    else {
+        print "not matched: $_\n";
+    }
 }
 
 close(DATA) or die "Could not close file properly!";
@@ -149,6 +152,11 @@ my @onset = cluster_count(\@onset_clusters, \%occurrences);
 my @onset_coda = cluster_count(\@onset_coda_clusters, \%occurrences);
 my @coda = cluster_count(\@coda_clusters, \%occurrences);
 
+for(@onset_coda) {
+    push(@coda, $_);
+    push(@onset, $_);
+}
+
 if ($info) {
     print "Vowels:\n@vowel_clusters\n";
     print "Clusters that need a vowel as successor:\n@onset_clusters\n";
@@ -169,10 +177,6 @@ if ($info) {
     print "**************************************************************\n\n";
 }
 
-for(@onset_coda) {
-    push(@coda, $_);
-    push(@onset, $_);
-}
 #my %adjacency_lists = (0 => [1,2], 1 => [0,3], 2 => [1], 3 => [0]) ;
 
 #my @vertices = (\@syllable_markers, \@vowels, \@onset, \@onset_coda, \@coda);
@@ -191,44 +195,51 @@ sub concatenate {
         return;
     }
     my %letter_count = %{$letter_count_ref};
-    my $row_start = $vertex * 5;
+    my $row_start = $vertex * 4;
     for(my $i=0; $i<4; $i++) {
         if ($adjacency_matrix[$row_start + $i] == 1) {
             my @next_vertex = @{$vertices[$i]};
             for(@next_vertex) {
+                if (length($_) + $anagram_length > $word_length) {
+                    my $l = length($_);
+                    #print "length of anagram = $anagram_length, length of cluster = $l\n";
+                    next;
+                }
+                elsif ($vertex == 0 and length($_)+ $anagram_length == $word_length) {
+                    if ($i != 1) {
+                    #print "New syllable without vowel\n";
+                        next;
+                    }
+                }
                 if (($vertex == 0) and (scalar(@anagram) >= 2)) { # last item in anagram is syllable gap
                     if (($anagram[-2] =~ /^([^aeiouäöü])/) and ($i != 1)) {# 2nd last and current are consonants
                         if ((scalar(@anagram) == 2) or $anagram_length == $word_length-1) { 
                         # syllable gap before first vowel or between consonants after last vowel
-                            print "start = c|c or end = ...c|c\t @anagram\t$_\n";
-                            next;
-                        }
-                        elsif (scalar(@anagram) >= 4) {
-                            if (($anagram[-4] =~ /^([^aeiouäöü])/) and $anagram[-3] =~ /\|/) {
-                                print "syllable without vowel:\t@anagram\t\t$_\n"; # Syllables without vowels
-                                next;
-                            }
+                        #print "start = c|c or end = ...c|c\t @anagram\t$_\n";
+                        next;
                         }
                     }
-                    if (scalar(@anagram) >= 4) {
-                        if (($anagram[-2] =~ /[a|e|i|o|u|ä|ö|ü]/) and ($i == 1)) {# 2nd last item and current are vowels
-                            if (($anagram[-4] =~ /[a|e|i|o|u|ä|ö|ü]/)  and ($anagram[-3] =~ /\|/)) { #prevent circle of vowels
-                                print "v|v|v:\t@anagram\t$_\n";
-                                next;
-                            }   
-                        }
-                    }
+                    #if (scalar(@anagram) >= 4) {
+                    #if (($anagram[-2] =~ /[aeiouäöü]/) and ($i == 1)) {# 2nd last item and current are vowels
+                    #if (($anagram[-4] =~ /[aeiouäöü]/)  and ($anagram[-3] =~ /\|/)) { #prevent circle of vowels
+                    ##print "v|v|v:\t@anagram\t$_\n";
+                    #next;
+                    #}   
+                    #}
+                    #}
                 }   
                 my ($bool, $downcount_ref) = countdown_letters($_, \%letter_count);
                 my %downcount = %{$downcount_ref};
                 if ($bool) {
                     push(@anagram, $_);
-                    if ($_ =~ /[a-z]|ä|ö|ü/)  {
+                    if ($_ =~ /[a-zäöü]/)  {
                         $anagram_length += length($_);
                     }
                     concatenate($word_length, $anagram_length, $i, \@anagram, \%downcount);
                     pop(@anagram);
-                    $anagram_length -= length($_);
+                    if ($_ =~ /[a-zäöü]/)  {
+                        $anagram_length -= length($_);
+                    }
                 }
             }
         }
