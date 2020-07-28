@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use List::Util qw( min max);
+use utf8;
 
 if (scalar(@ARGV) < 3) {
     push(@ARGV, 0);
@@ -25,19 +26,20 @@ while(<DATA>) {
         next;
     }	
     $all{$_} = 1;
-    if (/^(a|e|i|o|u|ä|ö|ü)/) {
+    if (/^[aeiouäöü]/) {
 	push(@vowel_clusters, $_);
     }
     elsif (/.+r\z/ or /sch(m|n)/) {
 	push(@onset_clusters, $_);
     }  
-    elsif (/^.\z/ or /^.l\z/ or /pf|schl|(c|p)h|s(p|c)|qu/) {
+    elsif (/^.\z/ or /^[^lm]l\z/ or /^pf[^t]|^(schl|(c|p)h|s(p|c))\z|qu/) {
 	push(@onset_coda_clusters, $_);
     }  
-    elsif (/([a-z])\1/ or /(ck|tz|(rz|cht)l)/ or /ß/ or /.+(st|.*t|m|n|g|k|ch|sch|z|s|f|d|b)\z/) {
+    elsif (/([a-z])\1/ or /(ck|tz|(rz|cht|m)l)/ or /.+(st|.*t|m|n|g|k|ch|sch|z|s|f|d|b)\z/) {
 	push(@coda_clusters, $_);
     }  
     else {
+        push(@vowel_clusters, $_);
         print "not matched: $_\n";
     }
 }
@@ -140,7 +142,6 @@ sub countdown_letters {
     }
 }
 
-
 my %occurrences = letter_count($word);
 my $syllables = calc_syllables($word);
 $occurrences{"|"} = $syllables;
@@ -152,9 +153,11 @@ my @onset = cluster_count(\@onset_clusters, \%occurrences);
 my @onset_coda = cluster_count(\@onset_coda_clusters, \%occurrences);
 my @coda = cluster_count(\@coda_clusters, \%occurrences);
 
+my %onset_coda = ();
 for(@onset_coda) {
     push(@coda, $_);
     push(@onset, $_);
+    $onset_coda{$_} = 1;
 }
 
 if ($info) {
@@ -179,10 +182,7 @@ if ($info) {
 
 #my %adjacency_lists = (0 => [1,2], 1 => [0,3], 2 => [1], 3 => [0]) ;
 
-#my @vertices = (\@syllable_markers, \@vowels, \@onset, \@onset_coda, \@coda);
 my @vertices = (\@syllable_markers, \@vowels, \@onset, \@coda);
-#my @adjacency_matrix = qw/0 1 1 1 0 1 0 1 1 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
-#my @adjacency_matrix = qw/0 1 1 0 0 1 0 1 0 1 0 1 0 0 0 1 1 0 0 0 1 1 0 0 0/; # 5 rows of size 5
 my @adjacency_matrix = qw/0 1 1 0 1 0 0 1 0 1 0 0 1 0 0 0 /; # 4 rows of size 4
 my @anagrams = ();
 
@@ -202,21 +202,29 @@ sub concatenate {
             for(@next_vertex) {
                 if (length($_) + $anagram_length > $word_length) {
                     my $l = length($_);
-                    #print "length of anagram = $anagram_length, length of cluster = $l\n";
                     next;
                 }
-                elsif ($vertex == 0 and length($_)+ $anagram_length == $word_length) {
-                    if ($i != 1) {
-                    #print "New syllable without vowel\n";
-                        next;
+                if ($vertex == 0) { # last item in anagram is syllable gap
+                    if ($i != 1) { # current is consonant
+                        if ($vertex == 0 and length($_)+ $anagram_length == $word_length) {
+                        # new syllable without vowel
+                            if (length($_) == 1) {
+                                last;
+                            }
+                            next;
+                        }
+                        elsif (exists $onset_coda{$_} and scalar(@anagram) >= 1) {
+                            if ($_ ne $anagram[-1]) { # to avoid duplicates
+                                next;
+                            }
+                        }
                     }
-                }
-                if (($vertex == 0) and (scalar(@anagram) >= 2)) { # last item in anagram is syllable gap
-                    if (($anagram[-2] =~ /^([^aeiouäöü])/) and ($i != 1)) {# 2nd last and current are consonants
-                        if ((scalar(@anagram) == 2) or $anagram_length == $word_length-1) { 
-                        # syllable gap before first vowel or between consonants after last vowel
-                        #print "start = c|c or end = ...c|c\t @anagram\t$_\n";
-                        next;
+                    if (scalar(@anagram) >= 2) {
+                        if ($anagram[-2] =~ /^([^aeiouäöü])/ and $i != 1) {# 2nd last and current are consonants
+                            if ((scalar(@anagram) == 2) or $anagram_length == $word_length-1) { 
+                            # syllable gap before first vowel or between consonants after last vowel
+                                next;
+                            }
                         }
                     }
                     #if (scalar(@anagram) >= 4) {
@@ -256,12 +264,21 @@ concatenate($length, 0, 0, \@anagram, \%occurrences);
 #}
 
 my @readable_anagrams = ();
+my %duplicates = ();
 for(@anagrams) {
-    $_ =~ tr/.//d;
+    $_ =~ tr/.|//d;
     push(@readable_anagrams, $_);
+    if (exists($duplicates{$_})) {
+        $duplicates{$_} += 1;
+    } else {
+        $duplicates{$_} = 1;
+    }
 }
 my $number = scalar(@anagrams);
 print "$number anagrams:\n";
 for(@readable_anagrams) {
     print "$_\n";
 }
+
+print "\nduplicates:\n";
+print "$_: $duplicates{$_}\n" for keys(%duplicates);

@@ -79,6 +79,7 @@ scht
 lm
 lst
 fst
+ü
 rfst
 rsch
 sst
