@@ -80,6 +80,8 @@ lm
 lst
 fst
 ü
+nk
+schw
 rfst
 rsch
 sst
@@ -143,6 +145,7 @@ rg
 rb
 ßt
 rzt
+rz
 mpf
 mpft
 ns
