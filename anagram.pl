@@ -11,10 +11,11 @@ my ($file, $word, $info) = @ARGV;
 my $length = length($word);
 
 my %all = ();
-my @vowel_clusters = (); # single or clusters
-my @onset_coda_clusters = (); # bl, schl, st, pfl, pf 
-my @onset_clusters = (); # fr, spr, chr, schm, schn, str 
-my @coda_clusters = (); # rbst, scht, lm, lst, fst, rfst, rsch, sst, chst, ckst, gst, tzt, schst, chst, kst, mmst, mst, nnst, nst, pst, vn,  rscht, rm, ffst, ppst, bbst, rrst, rst, rn, lln, llst, ml, rschst, rft, cht 
+my @vowel_clusters = (); # a, e, i, o, u, ä, ö, ü, y
+my @onset_coda_clusters = (); # bl, schl, st, pfl, pf... 
+
+my @onset_clusters = (); # fr, spr, chr, schm, schn, str... 
+my @coda_clusters = (); # bb, ll, rbst, scht, lm, lst, fst, rfst, rsch, sst, chst, ckst, gst, tzt, schst, chst, kst, mmst, mst, nnst, nst, pst, vn,  rscht, rm, ffst, ppst, bbst, rrst, rst, rn, lln, llst, ml, rschst, rft, cht... 
 
 open(DATA, "<$file") or die "Couldn't open file!";
 
@@ -25,20 +26,30 @@ while(<DATA>) {
         next;
     }	
     $all{$_} = 1;
-    if (/^[aeiouäöüy]/) {
-	push(@vowel_clusters, $_);
+    if  (/[\x9f]/) { # letter ß seems to be prefix of ä, ö, ü, so it must be matched beforehand
+        #print "ß: $_\n";
+        push(@coda_clusters, $_);
     }
+    elsif (/^[aeiouäöüy]/) { # or (/[^\x00-\x7f]/ and /[^\x9f]/))  { # same as /[^[:ascii:]]/ ; letter ß
+	    push(@vowel_clusters, $_);
+    }
+    #if (/[^\x00-\x7f]/ and /[^\x9f]/) { # non ascii but not letter ß
+    #push(@vowel_clusters, $_);
+    #}
+    #if (/[^\x00-\x7f]/) {
+    #print "non ascii: $_\n";
+    #}
     elsif (/.+r\z/ or /j|sch(m|n|w)/) {
-	push(@onset_clusters, $_);
+	    push(@onset_clusters, $_);
     }  
     elsif (/^.\z/ or /^[^lm]l\z/ or /^pf[^t]*|^(sch(l)?|(c|p)h|s(p|c))\z|qu/) {
-	push(@onset_coda_clusters, $_);
+	    push(@onset_coda_clusters, $_);
     }  
     elsif (/([a-z])\1/ or /(ck|tz|(rz|cht|m)l)/ or /.+(st|.*t|m|n|g|k|ch|z|s|f|d|b)\z/) {
-	push(@coda_clusters, $_);
+	    push(@coda_clusters, $_);
     }  
     else {
-        push(@vowel_clusters, $_);
+        #push(@vowel_clusters, $_);
         print "not matched: $_\n";
     }
 }
@@ -54,9 +65,8 @@ sub letter_count {
     for(@letters){
         if (exists $letter_count{$_}) {
        	    $letter_count{$_} += 1;
-        }
-        else {
-	    $letter_count{$_} = 1;
+        } else {
+	        $letter_count{$_} = 1;
         }
     }
     return %letter_count;
@@ -78,7 +88,7 @@ sub cluster_count{
 	        if (not exists($count{$letter})) {
 		        $min = 0;
 	            last;
-	        }else {
+	        } else {
 	        	if ( int($count{$letter}/$item_letter_count{$letter}) < $min) {
 		        $min = int($count{$letter}/$item_letter_count{$letter});
 		        }
@@ -95,19 +105,25 @@ sub cluster_count{
 
 # Takes a word and counts the occurences of vowels
 # Returns the maximum number of syllables the anagram may have
-sub calc_syllables {
+sub vowelcount {
     my $w = shift;   
     my @letters = split(//, $w);
     my $vowels = 0;
+    my $umlauts = 0;
     for(@letters) {
-        if (/a|e|i|o|u|ä|ö|ü|y/) {
+        if (/[aeiou]/) {
             $vowels += 1;
+        }elsif (/[\x9f]/) {
+            print "ß: $_\n";
+            $umlauts -= 1; # 1 has been added previously
+            next;
+        } elsif (/[äöüy]/) {
+            $umlauts += 1;
+            print "matched umlaut: $_\n";
         }
     }
-    if ($vowels > 0) {
-        $vowels += 1; # first and last element in generated anagram will be syllable start marker "|"
-    }
-    return $vowels;
+    my $syllables = $vowels + $umlauts/2;
+    return $syllables;
 }
 
 # Takes a cluster of letters and hash of letter: occurrences pairs as parameters
@@ -135,7 +151,7 @@ sub countdown_letters {
 }
 
 my %occurrences = letter_count($word);
-my $syllables = calc_syllables($word);
+my $syllables = vowelcount($word);
 $occurrences{"|"} = $syllables;
 
 my @syllable_markers = ();
@@ -145,7 +161,7 @@ my @onset = cluster_count(\@onset_clusters, \%occurrences);
 my @onset_coda = cluster_count(\@onset_coda_clusters, \%occurrences);
 my @coda = cluster_count(\@coda_clusters, \%occurrences);
 
-my %onset = ();
+my %onset = (); # for quick lookup to reduce number of recursive calls
 for(@onset) {
     $onset{$_} = 1;
 }
@@ -231,7 +247,7 @@ sub concatenate {
                     }
                     else { # current is vowel
                         if (scalar(@anagram) >= 2 and exists $onset{$anagram[-2]}) {
-                            print "possible duplicate cv and c|v: @anagram\t$_\n";
+                            #print "possible duplicate cv and c|v: @anagram\t$_\n";
                             next;
                         }
                     }
@@ -240,7 +256,7 @@ sub concatenate {
                 my %downcount = %{$downcount_ref};
                 if ($bool) {
                     push(@anagram, $_);
-                    if ($_ =~ /[a-zäöüß]/)  {
+                    if ($_ =~ /[a-zäöüß]/)  { # syllable start markers don't count
                         $anagram_length += length($_);
                     }
                     concatenate($word_length, $anagram_length, $i, \@anagram, \%downcount);
@@ -255,9 +271,10 @@ sub concatenate {
     return;
 }
 
-my @anagram = ();
+my @empty_anagram = ();
+push(@empty_anagram, '|');
 
-concatenate($length, 0, 0, \@anagram, \%occurrences);
+concatenate($length, 0, 0, \@empty_anagram, \%occurrences);
 #print "Anagrams: \n";
 #for(@anagrams){
 #print "$_\n";
@@ -275,10 +292,10 @@ for(@anagrams) {
     }
 }
 my $number = scalar(@anagrams);
-print "$number anagrams:\n";
+print "\n$number anagrams:\n";
 #for(@readable_anagrams) {
 #print "$_\n";
 #}
 
 print "\nduplicates:\n";
-print "$_: $duplicates{$_}\n" for keys(%duplicates);
+print "$_: $duplicates{$_}\t" for keys(%duplicates);
