@@ -8,12 +8,35 @@ if (scalar(@ARGV) < 3) {
     push(@ARGV, 0);
 }
 my ($file, $word, $info) = @ARGV;
-my $length = length($word);
+
+# takes a word and returns its length
+# necessary for info because length($word) is inaccurate, umlauts are counted twice 
+# and eszett is counted as eszett and as umlaut
+# not used as termination condition in sub concatenate because there, length($word) is accurate
+sub len { 
+    my $w = shift; 
+    my @letters = split(//, $w);
+    my $count = 0;
+    my $umlauts = 0;
+    my $eszett = 0;
+    for(@letters) {
+        if (/[\x9f]/) {
+            $eszett += 1;
+            $umlauts -= 1;
+        } elsif (/[äöü]/) {
+            $umlauts += 1;
+        } else {
+            $count += 1;
+        }
+   }
+   return $count + $eszett + $umlauts/2;
+}
+
+my $length = len($word);
 
 my %all = ();
 my @vowel_clusters = (); # a, e, i, o, u, ä, ö, ü, y
 my @onset_coda_clusters = (); # bl, schl, st, pfl, pf... 
-
 my @onset_clusters = (); # fr, spr, chr, schm, schn, str... 
 my @coda_clusters = (); # bb, ll, rbst, scht, lm, lst, fst, rfst, rsch, sst, chst, ckst, gst, tzt, schst, chst, kst, mmst, mst, nnst, nst, pst, vn,  rscht, rm, ffst, ppst, bbst, rrst, rst, rn, lln, llst, ml, rschst, rft, cht... 
 
@@ -26,19 +49,13 @@ while(<DATA>) {
         next;
     }	
     $all{$_} = 1;
-    if  (/[\x9f]/) { # letter ß seems to be prefix of ä, ö, ü, so it must be matched beforehand
+    if  (/[\x9f]/) {  #ä, ö, ü  seem to be prefix of letter ß, so it must be matched beforehand
         #print "ß: $_\n";
         push(@coda_clusters, $_);
     }
-    elsif (/^[aeiouäöüy]/) { # or (/[^\x00-\x7f]/ and /[^\x9f]/))  { # same as /[^[:ascii:]]/ ; letter ß
+    elsif (/^[aeiouäöüy]/) { # or (/[^\x00-\x7f]/ and /[^\x9f]/))  { # non ascii but not letter ß
 	    push(@vowel_clusters, $_);
     }
-    #if (/[^\x00-\x7f]/ and /[^\x9f]/) { # non ascii but not letter ß
-    #push(@vowel_clusters, $_);
-    #}
-    #if (/[^\x00-\x7f]/) {
-    #print "non ascii: $_\n";
-    #}
     elsif (/.+r\z/ or /j|sch(m|n|w)/) {
 	    push(@onset_clusters, $_);
     }  
@@ -114,12 +131,10 @@ sub vowelcount {
         if (/[aeiou]/) {
             $vowels += 1;
         }elsif (/[\x9f]/) {
-            print "ß: $_\n";
-            $umlauts -= 1; # 1 has been added previously
+            $umlauts -= 1; # 1 has been added previously because äöü seem to be prefix of ß
             next;
-        } elsif (/[äöüy]/) {
+        } elsif (/[äöü]/) {
             $umlauts += 1;
-            print "matched umlaut: $_\n";
         }
     }
     my $syllables = $vowels + $umlauts/2;
@@ -192,14 +207,14 @@ if ($info) {
     print "$_: $occurrences{$_}\t" for keys(%occurrences);
     print "\n";
     print "New syllable marker:\t@syllable_markers\n";
-    print "Vowels and vowel clusters in input word:\t@vowels\n";
+    print "Vowels in input word:\t@vowels\n";
     print "Onset clusters in input word:\t@onset\n";
     print "Coda clusters in input word :\t@coda\n";
     print "Onset and coda clusters in input word:\t@onset_coda\n";
     print "**************************************************************\n\n";
 }
 
-#my %adjacency_lists = (0 => [1,2], 1 => [0,3], 2 => [1], 3 => [0]) ;
+# adjacency lists = (0 => [1,2], 1 => [0,3], 2 => [1], 3 => [0]) 
 
 my @vertices = (\@syllable_markers, \@vowels, \@onset, \@coda);
 my @adjacency_matrix = qw/0 1 1 0 1 0 0 1 0 1 0 0 1 0 0 0 /; # 4 rows of size 4
@@ -274,7 +289,7 @@ sub concatenate {
 my @empty_anagram = ();
 push(@empty_anagram, '|');
 
-concatenate($length, 0, 0, \@empty_anagram, \%occurrences);
+concatenate(length($word), 0, 0, \@empty_anagram, \%occurrences);
 #print "Anagrams: \n";
 #for(@anagrams){
 #print "$_\n";
@@ -293,9 +308,4 @@ for(@anagrams) {
 }
 my $number = scalar(@anagrams);
 print "\n$number anagrams:\n";
-#for(@readable_anagrams) {
-#print "$_\n";
-#}
-
-print "\nduplicates:\n";
 print "$_: $duplicates{$_}\t" for keys(%duplicates);
