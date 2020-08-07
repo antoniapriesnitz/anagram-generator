@@ -4,10 +4,7 @@ use strict;
 use warnings;
 use List::Util qw( min max);
 
-if (scalar(@ARGV) < 3) {
-    push(@ARGV, 0);
-}
-my ($file, $word, $info) = @ARGV;
+my ($file, $word, $out) = @ARGV;
 
 # takes a word and returns its length
 # necessary for info because length($word) is inaccurate, umlauts are counted twice 
@@ -40,7 +37,7 @@ my @onset_coda_clusters = (); # bl, schl, st, pfl, pf...
 my @onset_clusters = (); # fr, spr, chr, schm, schn, str... 
 my @coda_clusters = (); # bb, ll, rbst, scht, lm, lst, fst, rfst, rsch, sst, chst, ckst, gst, tzt, schst, chst, kst, mmst, mst, nnst, nst, pst, vn,  rscht, rm, ffst, ppst, bbst, rrst, rst, rn, lln, llst, ml, rschst, rft, cht... 
 
-open(DATA, "<$file") or die "Couldn't open file!";
+open(DATA, "<$file") or die "Could not open data file!";
 
 while(<DATA>) {
     $_ =~ s/\n//;
@@ -194,25 +191,23 @@ for(@onset_coda) {
     $coda{$_} = 1;
 }
 
-if ($info) {
-    print "Vowels:\n@vowel_clusters\n";
-    print "Clusters that need a vowel as successor:\n@onset_clusters\n";
-    print "Double consonants and other noninital consonant clusters:\n@coda_clusters\n";
-    print "Clusters at the start or the end of a word:\n@onset_coda_clusters\n";
-    print "**************************************************************\n";
-    print "Input word: $word\n";
-    print "length = $length\n";
-    print "Maximum number of syllables = $syllables\n";
-    print "occurrences:\t";
-    print "$_: $occurrences{$_}\t" for keys(%occurrences);
-    print "\n";
-    print "New syllable marker:\t@syllable_markers\n";
-    print "Vowels in input word:\t@vowels\n";
-    print "Onset clusters in input word:\t@onset\n";
-    print "Coda clusters in input word :\t@coda\n";
-    print "Onset and coda clusters in input word:\t@onset_coda\n";
-    print "**************************************************************\n\n";
-}
+#print "Vowels:\n@vowel_clusters\n";
+#print "Clusters that need a vowel as successor:\n@onset_clusters\n";
+#print "Double consonants and other noninital consonant clusters:\n@coda_clusters\n";
+#print "Clusters at the start or the end of a word:\n@onset_coda_clusters\n";
+print "**************************************************************\n";
+print "Input word: $word\n";
+print "Length = $length\n";
+print "Maximum number of syllables = $syllables\n";
+print "New syllable marker:\t@syllable_markers\n";
+print "Occurring letters:\t";
+print "$_: $occurrences{$_}\t" for keys(%occurrences);
+print "\n";
+print "Vowels in input word:\t\t\t@vowels\n";
+print "Onset clusters in input word:\t\t@onset\n";
+print "Coda clusters in input word :\t\t@coda\n";
+print "Onset and coda clusters in input word:\t@onset_coda\n";
+print "**************************************************************\n\n";
 
 # adjacency lists = (0 => [1,2], 1 => [0,3], 2 => [1], 3 => [0]) 
 
@@ -290,10 +285,6 @@ my @empty_anagram = ();
 push(@empty_anagram, '|');
 
 concatenate(length($word), 0, 0, \@empty_anagram, \%occurrences);
-#print "Anagrams: \n";
-#for(@anagrams){
-#print "$_\n";
-#}
 
 my @readable_anagrams = ();
 my %duplicates = ();
@@ -309,3 +300,9 @@ for(@anagrams) {
 my $number = scalar(@anagrams);
 print "\n$number anagrams:\n";
 print "$_: $duplicates{$_}\t" for keys(%duplicates);
+
+open(FILE, '>'.$out) or die "Could not open output file!\n";
+for(@anagrams){
+print FILE "$_\n";
+}
+close FILE or die "Could not close output file!\n";
