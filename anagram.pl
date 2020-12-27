@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 use List::Util qw( min max);
+use rlib './lib';
+use Read_Language_Data;
 
 my ($file, $word, $out) = @ARGV;
 
@@ -31,44 +33,11 @@ sub len {
 
 my $length = len($word);
 
-my %all = ();
-my @vowel_clusters = (); # a, e, i, o, u, ä, ö, ü, y
-my @onset_coda_clusters = (); # bl, schl, st, pfl, pf... 
-my @onset_clusters = (); # fr, spr, chr, schm, schn, str... 
-my @coda_clusters = (); # bb, ll, rbst, scht, lm, lst, fst, rfst, rsch, sst, chst, ckst, gst, tzt, schst, chst, kst, mmst, mst, nnst, nst, pst, vn,  rscht, rm, ffst, ppst, bbst, rrst, rst, rn, lln, llst, ml, rschst, rft, cht... 
-
-open(DATA, "<$file") or die "Could not open data file!";
-
-while(<DATA>) {
-    $_ =~ s/\n//;
-    if (exists $all{$_}){
-    	print "duplicate: $_\n";
-        next;
-    }	
-    $all{$_} = 1;
-    if  (/[\x9f]/) {  #ä, ö, ü  seem to be prefix of letter ß, so it must be matched beforehand
-        #print "ß: $_\n";
-        push(@coda_clusters, $_);
-    }
-    elsif (/^[aeiouäöüy]/) { # or (/[^\x00-\x7f]/ and /[^\x9f]/))  { # non ascii but not letter ß
-	    push(@vowel_clusters, $_);
-    }
-    elsif (/.+r\z/ or /j|sch(m|n|w)/) {
-	    push(@onset_clusters, $_);
-    }  
-    elsif (/^.\z/ or /^[^lm]l\z/ or /^pf[^t]*|^(sch(l)?|(c|p)h|s(p|c))\z|qu/) {
-	    push(@onset_coda_clusters, $_);
-    }  
-    elsif (/([a-z])\1/ or /(ck|tz|(rz|cht|m)l)/ or /.+(st|.*t|m|n|g|k|ch|z|s|f|d|b)\z/) {
-	    push(@coda_clusters, $_);
-    }  
-    else {
-        #push(@vowel_clusters, $_);
-        print "not matched: $_\n";
-    }
-}
-
-close(DATA) or die "Could not close file properly!";
+my ($vowel_clusters_ref, $onset_clusters_ref, $onset_coda_clusters_ref, $coda_clusters_ref) = &Read_Language_Data::sort_clusters($file);
+my @vowel_clusters = @{$vowel_clusters_ref};
+my @onset_clusters = @{$onset_clusters_ref};
+my @onset_coda_clusters = @{$onset_coda_clusters_ref};
+my @coda_clusters = @{$coda_clusters_ref};
 
 # Counts the occurences of all letters of a word
 # Returns a hash of the form letter: occurences
