@@ -2,36 +2,15 @@
 
 use strict;
 use warnings;
+#use Module::Starter;
 use List::Util qw( min max);
 use rlib './lib';
 use Read_Language_Data;
+use Length_Umlauts;
 
 my ($file, $word, $out) = @ARGV;
 
-# takes a word and returns its length
-# necessary for info because length($word) is inaccurate, umlauts are counted twice 
-# and eszett is counted as eszett and as umlaut
-# not used as termination condition in sub concatenate because there, length($word) is accurate
-sub len { 
-    my $w = shift; 
-    my @letters = split(//, $w);
-    my $count = 0;
-    my $umlauts = 0;
-    my $eszett = 0;
-    for(@letters) {
-        if (/[\x9f]/) {
-            $eszett += 1;
-            $umlauts -= 1;
-        } elsif (/[äöü]/) {
-            $umlauts += 1;
-        } else {
-            $count += 1;
-        }
-   }
-   return $count + $eszett + $umlauts/2;
-}
-
-my $length = len($word);
+my $length = &Length_Umlauts::len($word);
 
 my ($vowel_clusters_ref, $onset_clusters_ref, $onset_coda_clusters_ref, $coda_clusters_ref) = &Read_Language_Data::sort_clusters($file);
 my @vowel_clusters = @{$vowel_clusters_ref};

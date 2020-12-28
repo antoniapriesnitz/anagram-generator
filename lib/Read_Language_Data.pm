@@ -1,6 +1,11 @@
 package Read_Language_Data;
+
+use 5.006;
+use strict;
+use warnings;
 use Data::Dumper;
-use Moose;
+use Moose;# nur für OO?
+
 
 sub sort_clusters{
     my $file = shift;
