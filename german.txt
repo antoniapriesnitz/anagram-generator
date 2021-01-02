@@ -181,3 +181,10 @@ ngt 3
 nz 3
 nzt 3
 rß 3
+rrschst 3
+lschst 3
+schst 3
+mschst 3
+nschst 3
+bschst 3
+tschst 3
